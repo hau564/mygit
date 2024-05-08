@@ -20,6 +20,12 @@ enum Command {
 
         object_hash: String,
     },
+    HashObject {
+        #[clap(short = 'w')]
+        write: bool,
+
+        file: String,
+    }
 }
 
 fn main() -> anyhow::Result<()> {
@@ -33,6 +39,12 @@ fn main() -> anyhow::Result<()> {
             object_hash,
         } => {
             commands::cat_file::invoke(pretty_print, &object_hash)?
+        }
+        Command::HashObject {
+            write,
+            file
+        } => {
+            commands::hash_object::invoke(write, &file[..])?
         }
     }
     Ok(())

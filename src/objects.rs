@@ -2,14 +2,14 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use flate2::read::ZlibDecoder;
 
-pub(crate) struct Object {
+pub(crate) struct Object<T> {
     pub size: i64,
     pub kind: String,
-    pub content: String
+    pub content: T
 }
 
-impl Object {
-    pub fn new(object_hash: &str) -> std::io::Result<Object> {
+impl Object<()> {
+    pub(crate) fn read(object_hash: &str) -> std::io::Result<Object<String>> {
         let f = std::fs::File::open(format!(".git/objects/{}/{}", &object_hash[..2], &object_hash[2..]))?;
         let z = ZlibDecoder::new(f);
         let mut z = BufReader::new(z);
