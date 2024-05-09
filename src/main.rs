@@ -25,6 +25,9 @@ enum Command {
         write: bool,
 
         file: String,
+    },
+    Add {
+        dir: String,
     }
 }
 
@@ -45,6 +48,11 @@ fn main() -> anyhow::Result<()> {
             file
         } => {
             commands::hash_object::invoke(write, &file[..])?
+        }
+        Command::Add {
+            dir: _
+        } => {
+
         }
     }
     Ok(())

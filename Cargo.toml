@@ -11,3 +11,4 @@ flate2 = "1.0"                                                     # gzip compre
 sha1 = "0.10.1"                                                    # hashing
 hex = "0.4.3"                                                      # working with hash output
 anyhow = "1.0.59"
+bytes = "1.6.0"
