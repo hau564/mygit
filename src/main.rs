@@ -26,8 +26,8 @@ enum Command {
 
         file: String,
     },
-    Add {
-        dir: String,
+    LsTree {
+        tree_hash: String,
     }
 }
 
@@ -49,10 +49,10 @@ fn main() -> anyhow::Result<()> {
         } => {
             commands::hash_object::invoke(write, &file[..])?
         }
-        Command::Add {
-            dir: _
+        Command::LsTree {
+            tree_hash
         } => {
-
+            commands::ls_tree::invoke(&tree_hash)?
         }
     }
     Ok(())

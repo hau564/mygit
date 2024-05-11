@@ -7,6 +7,7 @@ use std::fs;
 use std::fs::File;
 use sha1::{Sha1, Digest};
 
+
 pub(crate) struct Object<T> {
     pub size: i64,
     pub kind: String,
@@ -14,7 +15,7 @@ pub(crate) struct Object<T> {
 }
 
 impl Object<()> {
-    pub(crate) fn read(object_hash: &str) -> std::io::Result<Object<impl Read>> {
+    pub(crate) fn read(object_hash: &str) -> std::io::Result<Object<impl BufRead>> {
         let f = std::fs::File::open(format!(".git/objects/{}/{}", &object_hash[..2], &object_hash[2..]))?;
         let z = ZlibDecoder::new(f);
         let mut z = BufReader::new(z);
@@ -33,7 +34,7 @@ impl Object<()> {
         Ok(Object{kind: kind, size: size, content: z})
     }
 
-    pub(crate) fn blob_from_file(file: &str) -> std::io::Result<Object<impl Read>> {
+    pub(crate) fn blob_from_file(file: &str) -> std::io::Result<Object<impl BufRead>> {
         let f = File::open(file)?;
         let reader = BufReader::new(f);
         let size = fs::metadata(file)?.len();
@@ -43,13 +44,15 @@ impl Object<()> {
             content: reader
         })
     }
-
 }
 
 impl<R> Object<R> 
-where R: Read
+where R: BufRead
 {
     pub(crate) fn pretty(mut self) -> String {
+        if self.kind == "tree" {
+            return self.pretty_tree();
+        }
         let mut bytes = Vec::new();
         self.content.read_to_end(&mut bytes).unwrap();
         let mut bytes_fix = Vec::new();
@@ -59,7 +62,7 @@ where R: Read
                 bytes_fix.push(*i);
             }
         }
-        let pretty = String::from_utf8(bytes_fix).expect("Convert content bytes to string");
+        let pretty = String::from_utf8(bytes_fix).expect("Convert bytes to string");
         pretty
     }
 
@@ -89,4 +92,51 @@ where R: Read
 
         hash
     }
+    
+    pub(crate) fn pretty_tree(mut self) -> String {
+        assert!(self.kind == "tree", "object is not a tree");
+
+        let mut pretty = String::new();
+
+        loop {
+            let mut mode = Vec::new();
+            let n = self.content.read_until(b' ', &mut mode).unwrap_or(0);
+            if n == 0 {
+                break;
+            }
+            if !pretty.is_empty() {
+                pretty.push('\n');
+            }
+            mode.pop();
+    
+            let mut file_name = Vec::new();
+            self.content.read_until(b'\0', &mut file_name).unwrap();
+            file_name.pop();
+    
+            let mut hash = vec![0; 20];
+            self.content.read_exact(&mut hash).unwrap();        
+            
+            pretty.push_str(get_entry(mode, file_name, hash).as_mut_str());
+        }
+
+        pretty
+    }
+}
+
+fn get_entry(mode: Vec<u8>, file_name: Vec<u8>, hash_bytes: Vec<u8>) -> String {
+    let hash = hex::encode(hash_bytes);
+    let object = Object::read(&hash).expect("reading object from hash");
+
+    let mut entry = String::new();
+    if mode.len() < 6 {entry.push('0');}
+    entry.push_str(String::from_utf8(mode).expect("coverting mode from bytes to string").as_mut_str());
+    
+    entry.push(' ');
+    entry.push_str(&object.kind[..]);
+    entry.push(' ');
+    entry.push_str(&hash[..]);
+    entry.push_str("    ");
+    entry.push_str(String::from_utf8(file_name).expect("coverting file name from bytes to string").as_mut_str());
+
+    entry
 }
